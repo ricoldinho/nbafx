@@ -6,31 +6,54 @@ import java.sql.SQLException;
 import java.util.Properties;
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Clase de utilidad para gestionar la conexión a la base de datos.
+ * Implementa el patrón Singleton para asegurar una única instancia de conexión compartida.
+ */
 public class DatabaseConnection {
+    
     private static Connection connection = null;
+    private static final Logger LOGGER = Logger.getLogger(DatabaseConnection.class.getName());
+    private static final Properties PROPERTIES = new Properties();
 
-    public static Connection getConnection() {
+    // Carga estática de la configuración para hacerlo solo una vez
+    static {
+        try (InputStream input = DatabaseConnection.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (input != null) {
+                PROPERTIES.load(input);
+            } else {
+                LOGGER.log(Level.SEVERE, "No se encontró el archivo config.properties");
+            }
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, "Error al cargar la configuración de base de datos", ex);
+        }
+    }
+
+    /**
+     * Constructor privado para evitar instanciación de la clase utilitaria.
+     */
+    private DatabaseConnection() { }
+
+    /**
+     * Obtiene la conexión actual a la base de datos.
+     * Si la conexión no existe o está cerrada, intenta establecer una nueva.
+     * El método es sincronizado para garantizar seguridad en entornos multihilo (Tasks).
+     *
+     * @return La conexión activa a la base de datos o null si ocurre un error.
+     */
+    public static synchronized Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
-                try (InputStream input = DatabaseConnection.class.getClassLoader().getResourceAsStream("config.properties")) {
-                    Properties prop = new Properties();
-                    if (input == null) {
-                        System.out.println("Sorry, unable to find config.properties");
-                        return null;
-                    }
-                    prop.load(input);
-                    
-                    connection = DriverManager.getConnection(
-                            prop.getProperty("db.url"),
-                            prop.getProperty("db.user"),
-                            prop.getProperty("db.password"));
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
+                connection = DriverManager.getConnection(
+                        PROPERTIES.getProperty("db.url"),
+                        PROPERTIES.getProperty("db.user"),
+                        PROPERTIES.getProperty("db.password"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error al conectar con la base de datos", e);
         }
         return connection;
     }

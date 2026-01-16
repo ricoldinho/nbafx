@@ -3,23 +3,32 @@ package edu.rico.nbafx.controller;
 import edu.rico.nbafx.model.Rol;
 import edu.rico.nbafx.model.Usuario;
 import edu.rico.nbafx.service.UsuarioService;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.ChoiceDialog;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * Controlador para la vista de inicio de sesión.
+ * Gestiona la autenticación y el registro de usuarios de forma asíncrona.
+ */
 public class LoginController {
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private Label errorLabel;
-
+    
+    // Inyección de dependencia del servicio
     private UsuarioService usuarioService = new UsuarioService();
 
+    /**
+     * Maneja el evento de inicio de sesión.
+     * Ejecuta la validación en un hilo separado para no congelar la UI.
+     */
     @FXML
     private void handleLogin() {
         String username = usernameField.getText();
@@ -30,19 +39,47 @@ public class LoginController {
             return;
         }
 
-        Optional<Usuario> usuario = usuarioService.login(username, password);
-        if (usuario.isPresent()) {
-            errorLabel.setText("");
-            showAlert(Alert.AlertType.INFORMATION, "Éxito", "Bienvenido " + usuario.get().getNombre() + " (" + usuario.get().getRol() + ")");
-            // Aquí podrías navegar a la pantalla principal
-        } else {
-            errorLabel.setText("Usuario o contraseña incorrectos");
-        }
+        // Feedback visual y bloqueo de inputs
+        errorLabel.setText("Verificando credenciales...");
+        setInputsDisabled(true);
+
+        // Tarea asíncrona para el login
+        Task<Optional<Usuario>> loginTask = new Task<>() {
+            @Override
+            protected Optional<Usuario> call() throws Exception {
+                return usuarioService.login(username, password);
+            }
+        };
+
+        loginTask.setOnSucceeded(event -> {
+            setInputsDisabled(false);
+            Optional<Usuario> usuarioOpt = loginTask.getValue();
+            
+            if (usuarioOpt.isPresent()) {
+                errorLabel.setText("Login correcto");
+                abrirVistaPrincipal(usuarioOpt.get());
+            } else {
+                errorLabel.setText("Usuario o contraseña incorrectos");
+            }
+        });
+
+        loginTask.setOnFailed(event -> {
+            setInputsDisabled(false);
+            errorLabel.setText("Error de conexión");
+            Throwable ex = loginTask.getException();
+            ex.printStackTrace(); // En producción usar logger
+        });
+
+        new Thread(loginTask).start();
     }
 
+    /**
+     * Maneja el evento de registro de un nuevo usuario.
+     * Utiliza diálogos para capturar la información y una Task para guardar en BD.
+     */
     @FXML
     private void handleRegister() {
-        // Diálogo simple para registro rápido (en una app real sería otra vista)
+        // Diálogo simple para registro rápido
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Registro");
         dialog.setHeaderText("Ingrese nuevo usuario");
@@ -64,15 +101,60 @@ public class LoginController {
                 
                 Optional<Rol> rolResult = rolDialog.showAndWait();
                 rolResult.ifPresent(rol -> {
-                    try {
-                        usuarioService.registrarUsuario(name, pass, rol);
-                        showAlert(Alert.AlertType.INFORMATION, "Éxito", "Usuario registrado correctamente");
-                    } catch (Exception e) {
-                        showAlert(Alert.AlertType.ERROR, "Error", e.getMessage());
-                    }
+                    registrarUsuarioAsync(name, pass, rol);
                 });
             });
         });
+    }
+
+    /**
+     * Realiza el registro del usuario en segundo plano.
+     */
+    private void registrarUsuarioAsync(String name, String pass, Rol rol) {
+        Task<Void> registerTask = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                usuarioService.registrarUsuario(name, pass, rol);
+                return null;
+            }
+        };
+
+        registerTask.setOnSucceeded(e -> 
+            showAlert(Alert.AlertType.INFORMATION, "Éxito", "Usuario registrado correctamente")
+        );
+
+        registerTask.setOnFailed(e -> 
+            showAlert(Alert.AlertType.ERROR, "Error", "Fallo al registrar: " + registerTask.getException().getMessage())
+        );
+
+        new Thread(registerTask).start();
+    }
+
+    /**
+     * Carga y muestra la vista principal de la aplicación.
+     * @param usuario El usuario autenticado.
+     */
+    private void abrirVistaPrincipal(Usuario usuario) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/usuarios-view.fxml"));
+            Scene scene = new Scene(loader.load(), 800, 600);
+            
+            UsuariosController controller = loader.getController();
+            controller.setUsuario(usuario);
+            
+            Stage stage = (Stage) usernameField.getScene().getWindow();
+            stage.setScene(scene);
+            stage.setTitle("Gestión de Usuarios - NBA FX");
+            stage.centerOnScreen();
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "No se pudo cargar la vista principal: " + e.getMessage());
+        }
+    }
+
+    private void setInputsDisabled(boolean disabled) {
+        usernameField.setDisable(disabled);
+        passwordField.setDisable(disabled);
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
