@@ -24,12 +24,12 @@
       </VBox>
    </top>
    <center>
-      <ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent;" BorderPane.alignment="CENTER">
+      <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="transparent-container" BorderPane.alignment="CENTER">
          <content>
             <VBox alignment="TOP_CENTER" spacing="20.0">
                <children>
-                  <Label style="-fx-font-size: 24px; -fx-font-weight: bold;" text="Plantilla de Jugadores" />
-                  <TilePane fx:id="jugadoresContainer" hgap="20.0" prefColumns="3" prefTileHeight="350.0" prefTileWidth="250.0" style="-fx-background-color: transparent;" vgap="20.0">
+                  <Label styleClass="page-title" text="Plantilla de Jugadores" />
+                  <TilePane fx:id="jugadoresContainer" hgap="20.0" prefColumns="3" prefTileHeight="350.0" prefTileWidth="250.0" styleClass="transparent-container" vgap="20.0">
                      <padding>
                         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                      </padding>
@@ -43,7 +43,7 @@
       </ScrollPane>
    </center>
    <bottom>
-      <HBox alignment="CENTER" prefHeight="40.0" style="-fx-background-color: #f0f0f0;" BorderPane.alignment="CENTER">
+      <HBox alignment="CENTER" prefHeight="40.0" styleClass="footer" BorderPane.alignment="CENTER">
          <children>
             <Label text="© 2024 NBA FX System" />
          </children>

@@ -15,6 +15,7 @@ public class Jugador {
     private int numeroAnillos;
     private double altura; // En metros
     private double peso;   // En kilogramos
+    private String imageUrl; // URL de la imagen del jugador
 
     /**
      * Constructor vacío por defecto.
@@ -32,8 +33,9 @@ public class Jugador {
      * @param numeroAnillos La cantidad de anillos de campeonato ganados.
      * @param altura La altura en metros.
      * @param peso El peso en kilogramos.
+     * @param imageUrl La URL de la imagen del jugador.
      */
-    public Jugador(String nombre, int dorsal, String equipo, Posicion posicion, int numeroAnillos, double altura, double peso) {
+    public Jugador(String nombre, int dorsal, String equipo, Posicion posicion, int numeroAnillos, double altura, double peso, String imageUrl) {
         this.nombre = nombre;
         this.dorsal = dorsal;
         this.equipo = equipo;
@@ -41,6 +43,7 @@ public class Jugador {
         this.numeroAnillos = numeroAnillos;
         this.altura = altura;
         this.peso = peso;
+        this.imageUrl = imageUrl;
     }
 
     // Getters y Setters
@@ -109,6 +112,14 @@ public class Jugador {
         this.peso = peso;
     }
 
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     @Override
     public String toString() {
         return "Jugador{" +
@@ -120,6 +131,7 @@ public class Jugador {
                 ", numeroAnillos=" + numeroAnillos +
                 ", altura=" + altura +
                 ", peso=" + peso +
+                ", imageUrl='" + imageUrl + '\'' +
                 '}';
     }
 
@@ -135,11 +147,12 @@ public class Jugador {
                 Double.compare(jugador.peso, peso) == 0 &&
                 Objects.equals(nombre, jugador.nombre) &&
                 Objects.equals(equipo, jugador.equipo) &&
-                posicion == jugador.posicion;
+                posicion == jugador.posicion &&
+                Objects.equals(imageUrl, jugador.imageUrl);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, nombre, dorsal, equipo, posicion, numeroAnillos, altura, peso);
+        return Objects.hash(id, nombre, dorsal, equipo, posicion, numeroAnillos, altura, peso, imageUrl);
     }
 }

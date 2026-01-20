@@ -59,6 +59,20 @@
     -fx-text-fill: #212529;
 }
 
+/* Estilos Generales de Layout */
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.transparent-container {
+    -fx-background-color: transparent;
+}
+
+.footer {
+    -fx-background-color: #f0f0f0;
+}
+
 /* Estilos TableView existentes... */
 .table-view {
     -fx-background-color: transparent;

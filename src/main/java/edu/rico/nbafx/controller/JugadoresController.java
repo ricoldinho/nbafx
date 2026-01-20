@@ -9,28 +9,25 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Controlador para la vista de gestión de jugadores.
- * Muestra los jugadores en formato de tarjetas (Cards).
+ * Muestra los jugadores cargando componentes FXML dinámicos (tarjetas).
  */
 public class JugadoresController {
 
     @FXML private TilePane jugadoresContainer;
 
     private final JugadorService jugadorService = new JugadorService();
-    // URL de imagen placeholder por defecto
-    private static final String DEFAULT_IMAGE_URL = "https://via.placeholder.com/150";
 
     @FXML
     public void initialize() {
@@ -52,7 +49,18 @@ public class JugadoresController {
             jugadoresContainer.getChildren().clear();
             List<Jugador> jugadores = task.getValue();
             for (Jugador jugador : jugadores) {
-                jugadoresContainer.getChildren().add(crearTarjetaJugador(jugador));
+                try {
+                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/jugador-card.fxml"));
+                    Parent cardNode = loader.load();
+                    
+                    JugadorCardController cardController = loader.getController();
+                    // Pasamos el jugador y las acciones (callbacks) al controlador de la tarjeta
+                    cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador);
+                    
+                    jugadoresContainer.getChildren().add(cardNode);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
             }
         });
 
@@ -63,69 +71,12 @@ public class JugadoresController {
         new Thread(task).start();
     }
 
-    /**
-     * Crea un nodo gráfico (Card) que representa a un jugador.
-     *
-     * @param jugador El jugador a visualizar.
-     * @return Un VBox estilizado como tarjeta.
-     */
-    private VBox crearTarjetaJugador(Jugador jugador) {
-        VBox card = new VBox(10);
-        card.getStyleClass().add("card");
-        card.setPadding(new javafx.geometry.Insets(15));
-        card.setAlignment(Pos.TOP_CENTER);
-        card.setPrefWidth(250);
-
-        // Imagen del jugador
-        ImageView imageView = new ImageView();
-        try {
-            // En un caso real, la URL vendría del objeto Jugador
-            imageView.setImage(new Image(DEFAULT_IMAGE_URL, true)); 
-        } catch (Exception e) {
-            // Fallback si no carga la imagen
-        }
-        imageView.setFitHeight(150);
-        imageView.setFitWidth(150);
-        imageView.setPreserveRatio(true);
-
-        // Datos del jugador
-        Label nombreLabel = new Label(jugador.getNombre());
-        nombreLabel.getStyleClass().add("card-title");
-
-        Label equipoLabel = new Label(jugador.getEquipo() + " - #" + jugador.getDorsal());
-        equipoLabel.getStyleClass().add("card-subtitle");
-
-        VBox detalles = new VBox(5);
-        detalles.setAlignment(Pos.CENTER_LEFT);
-        detalles.getChildren().addAll(
-            new Label("Posición: " + jugador.getPosicion()),
-            new Label("Altura: " + jugador.getAltura() + "m | Peso: " + jugador.getPeso() + "kg"),
-            new Label("Anillos: " + jugador.getNumeroAnillos())
-        );
-
-        // Botones de acción
-        HBox acciones = new HBox(10);
-        acciones.setAlignment(Pos.CENTER);
-        
-        Button btnEditar = new Button("Editar");
-        btnEditar.getStyleClass().add("button-warning");
-        btnEditar.setOnAction(e -> handleEditarJugador(jugador));
-
-        Button btnEliminar = new Button("Eliminar");
-        btnEliminar.getStyleClass().add("button-danger");
-        btnEliminar.setOnAction(e -> handleEliminarJugador(jugador));
-
-        acciones.getChildren().addAll(btnEditar, btnEliminar);
-
-        card.getChildren().addAll(imageView, nombreLabel, equipoLabel, detalles, acciones);
-        return card;
-    }
-
     @FXML
     private void handleAgregarJugador() {
         mostrarDialogoJugador(null);
     }
 
+    // Estos métodos ahora son llamados desde el JugadorCardController a través de callbacks
     private void handleEditarJugador(Jugador jugador) {
         mostrarDialogoJugador(jugador);
     }
@@ -174,6 +125,7 @@ public class JugadoresController {
         TextField anillosField = new TextField();
         TextField alturaField = new TextField();
         TextField pesoField = new TextField();
+        TextField imageUrlField = new TextField();
 
         nombreField.setPromptText("Nombre");
         dorsalField.setPromptText("Dorsal");
@@ -181,6 +133,7 @@ public class JugadoresController {
         anillosField.setPromptText("Anillos");
         alturaField.setPromptText("Altura (m)");
         pesoField.setPromptText("Peso (kg)");
+        imageUrlField.setPromptText("URL de Imagen");
 
         if (jugadorExistente != null) {
             nombreField.setText(jugadorExistente.getNombre());
@@ -190,6 +143,7 @@ public class JugadoresController {
             anillosField.setText(String.valueOf(jugadorExistente.getNumeroAnillos()));
             alturaField.setText(String.valueOf(jugadorExistente.getAltura()));
             pesoField.setText(String.valueOf(jugadorExistente.getPeso()));
+            imageUrlField.setText(jugadorExistente.getImageUrl());
         }
 
         content.getChildren().addAll(
@@ -199,10 +153,10 @@ public class JugadoresController {
             new Label("Posición:"), posicionBox,
             new Label("Anillos:"), anillosField,
             new Label("Altura (m):"), alturaField,
-            new Label("Peso (kg):"), pesoField
+            new Label("Peso (kg):"), pesoField,
+            new Label("URL Imagen:"), imageUrlField
         );
         
-        // ScrollPane para el diálogo por si es muy alto
         ScrollPane scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
         scrollPane.setPrefHeight(400);
@@ -218,6 +172,7 @@ public class JugadoresController {
                     int anillos = Integer.parseInt(anillosField.getText());
                     double altura = Double.parseDouble(alturaField.getText());
                     double peso = Double.parseDouble(pesoField.getText());
+                    String imageUrl = imageUrlField.getText();
 
                     Jugador j = jugadorExistente != null ? jugadorExistente : new Jugador();
                     j.setNombre(nombre);
@@ -227,6 +182,7 @@ public class JugadoresController {
                     j.setNumeroAnillos(anillos);
                     j.setAltura(altura);
                     j.setPeso(peso);
+                    j.setImageUrl(imageUrl);
                     return j;
                 } catch (NumberFormatException e) {
                     showAlert(Alert.AlertType.ERROR, "Error de formato", "Por favor ingrese números válidos.");
@@ -241,7 +197,7 @@ public class JugadoresController {
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() throws Exception {
-                    if (jugador.getId() == 0) { // Nuevo (ID 0 por defecto)
+                    if (jugador.getId() == 0) {
                         jugadorService.registrarJugador(jugador);
                     } else {
                         jugadorService.actualizarJugador(jugador);
@@ -263,12 +219,6 @@ public class JugadoresController {
 
     @FXML
     private void handleVolver() {
-        // Volver a la vista principal de usuarios (o menú principal)
-        // Como no tenemos el usuario actual aquí guardado, podríamos necesitar pasarlo
-        // o simplemente volver al login si es lo deseado.
-        // Asumiremos volver a la vista de usuarios, pero necesitamos el usuario logueado.
-        // Por simplicidad en este paso, volveremos al Login o podríamos implementar un SessionManager.
-        // Para este ejemplo, volveremos a la vista de usuarios asumiendo que el AppShell mantiene estado o volvemos al login.
         AppShell.getInstance().loadView(View.USUARIOS);
     }
 

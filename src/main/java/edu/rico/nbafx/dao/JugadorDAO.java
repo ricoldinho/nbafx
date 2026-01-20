@@ -68,7 +68,7 @@ public class JugadorDAO {
      * @throws SQLException Si ocurre un error durante la inserción.
      */
     public void save(Jugador jugador) throws SQLException {
-        String sql = "INSERT INTO jugadores (nombre, dorsal, equipo, posicion, numero_anillos, altura, peso) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO jugadores (nombre, dorsal, equipo, posicion, numero_anillos, altura, peso, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -80,6 +80,7 @@ public class JugadorDAO {
             stmt.setInt(5, jugador.getNumeroAnillos());
             stmt.setDouble(6, jugador.getAltura());
             stmt.setDouble(7, jugador.getPeso());
+            stmt.setString(8, jugador.getImageUrl());
             
             stmt.executeUpdate();
             
@@ -98,7 +99,7 @@ public class JugadorDAO {
      * @throws SQLException Si ocurre un error durante la actualización.
      */
     public void update(Jugador jugador) throws SQLException {
-        String sql = "UPDATE jugadores SET nombre = ?, dorsal = ?, equipo = ?, posicion = ?, numero_anillos = ?, altura = ?, peso = ? WHERE id = ?";
+        String sql = "UPDATE jugadores SET nombre = ?, dorsal = ?, equipo = ?, posicion = ?, numero_anillos = ?, altura = ?, peso = ?, image_url = ? WHERE id = ?";
         
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -110,7 +111,8 @@ public class JugadorDAO {
             stmt.setInt(5, jugador.getNumeroAnillos());
             stmt.setDouble(6, jugador.getAltura());
             stmt.setDouble(7, jugador.getPeso());
-            stmt.setInt(8, jugador.getId());
+            stmt.setString(8, jugador.getImageUrl());
+            stmt.setInt(9, jugador.getId());
             
             stmt.executeUpdate();
         }
@@ -150,6 +152,7 @@ public class JugadorDAO {
         jugador.setNumeroAnillos(rs.getInt("numero_anillos"));
         jugador.setAltura(rs.getDouble("altura"));
         jugador.setPeso(rs.getDouble("peso"));
+        jugador.setImageUrl(rs.getString("image_url"));
         return jugador;
     }
 }

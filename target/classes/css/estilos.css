@@ -16,6 +16,64 @@
     -fx-cursor: hand;
 }
 
+.button-danger {
+    -fx-background-color: #dc3545;
+}
+
+.button-danger:hover {
+    -fx-background-color: #c82333;
+}
+
+.button-warning {
+    -fx-background-color: #ffc107;
+    -fx-text-fill: #212529;
+}
+
+.button-warning:hover {
+    -fx-background-color: #e0a800;
+}
+
+/* Estilos para Cards tipo Bootstrap */
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);
+    -fx-border-color: rgba(0,0,0,0.125);
+    -fx-border-radius: 5;
+    -fx-border-width: 1;
+}
+
+.card-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #212529;
+}
+
+.card-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #6c757d;
+}
+
+.card-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #212529;
+}
+
+/* Estilos Generales de Layout */
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.transparent-container {
+    -fx-background-color: transparent;
+}
+
+.footer {
+    -fx-background-color: #f0f0f0;
+}
+
+/* Estilos TableView existentes... */
 .table-view {
     -fx-background-color: transparent;
     -fx-table-cell-border-color: transparent;
