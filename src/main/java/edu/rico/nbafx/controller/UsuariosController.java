@@ -58,6 +58,12 @@ public class UsuariosController {
 
         // Enlazar la lista observable a la tabla
         usuariosTable.setItems(usuariosList);
+        
+        // Recuperar usuario de la sesión si existe (al volver de otra pantalla)
+        Usuario sessionUser = AppShell.getInstance().getCurrentUser();
+        if (sessionUser != null) {
+            setUsuario(sessionUser);
+        }
     }
 
     /**
@@ -78,6 +84,14 @@ public class UsuariosController {
             adminPanel.setVisible(false);
             adminPanel.setManaged(false);
         }
+    }
+
+    /**
+     * Navega a la vista de gestión de jugadores.
+     */
+    @FXML
+    private void handleIrAJugadores() {
+        AppShell.getInstance().loadView(View.JUGADORES);
     }
 
     /**
@@ -263,6 +277,7 @@ public class UsuariosController {
      */
     @FXML
     private void handleLogout() {
+        AppShell.getInstance().setCurrentUser(null); // Limpiar sesión
         AppShell.getInstance().loadView(View.LOGIN);
     }
 

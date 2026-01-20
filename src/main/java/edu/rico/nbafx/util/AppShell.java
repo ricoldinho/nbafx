@@ -1,5 +1,6 @@
 package edu.rico.nbafx.util;
 
+import edu.rico.nbafx.model.Usuario;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -21,6 +22,9 @@ public class AppShell {
     private BorderPane mainLayout;
     // Cache para almacenar los controladores si se desea mantener estado (opcional)
     private Map<View, Object> controllers = new HashMap<>();
+    
+    // Usuario actualmente logueado (Sesión)
+    private Usuario currentUser;
 
     private AppShell() {}
 
@@ -60,17 +64,7 @@ public class AppShell {
             // Actualizamos el título de la ventana
             primaryStage.setTitle(view.getTitle());
             
-            // Si es la vista de Login, quizás queramos reemplazar todo el layout o solo el centro.
-            // Para un AppShell puro, a veces el login es una escena aparte o el shell se carga post-login.
-            // Aquí asumiremos que el Shell maneja todo y reemplazamos el contenido de la escena o del BorderPane.
-            
-            // Opción A: Reemplazar la escena completa (útil si cambian dimensiones drásticamente o estilos globales)
-            // Scene scene = new Scene(viewNode);
-            // primaryStage.setScene(scene);
-            
-            // Opción B (Patrón Shell): Mantener un contenedor principal y cambiar su contenido.
-            // Si la vista es LOGIN, a lo mejor no queremos menú. Si es USUARIOS, sí.
-            // Para simplificar y ser flexibles, reemplazamos la raíz de la escena actual.
+            // Reemplazamos la raíz de la escena actual.
             primaryStage.getScene().setRoot(viewNode);
             
             primaryStage.show();
@@ -82,7 +76,6 @@ public class AppShell {
 
         } catch (IOException e) {
             e.printStackTrace();
-            // En una app real, mostraríamos una alerta de error fatal o loguearíamos adecuadamente
             return null;
         }
     }
@@ -93,5 +86,13 @@ public class AppShell {
      */
     public Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    public Usuario getCurrentUser() {
+        return currentUser;
+    }
+
+    public void setCurrentUser(Usuario currentUser) {
+        this.currentUser = currentUser;
     }
 }

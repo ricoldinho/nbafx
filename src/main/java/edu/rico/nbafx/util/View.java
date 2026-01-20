@@ -6,7 +6,8 @@ package edu.rico.nbafx.util;
  */
 public enum View {
     LOGIN("/fxml/login_view.fxml", "Login System"),
-    USUARIOS("/fxml/usuarios-view.fxml", "Gestión de Usuarios - NBA FX");
+    USUARIOS("/fxml/usuarios-view.fxml", "Gestión de Usuarios - NBA FX"),
+    JUGADORES("/fxml/jugadores-view.fxml", "Plantilla de Jugadores - NBA FX");
 
     private final String fxmlPath;
     private final String title;

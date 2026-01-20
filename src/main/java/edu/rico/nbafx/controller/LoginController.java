@@ -55,6 +55,8 @@ public class LoginController {
             
             if (usuarioOpt.isPresent()) {
                 errorLabel.setText("Login correcto");
+                // Guardar usuario en sesión
+                AppShell.getInstance().setCurrentUser(usuarioOpt.get());
                 abrirVistaPrincipal(usuarioOpt.get());
             } else {
                 errorLabel.setText("Usuario o contraseña incorrectos");
