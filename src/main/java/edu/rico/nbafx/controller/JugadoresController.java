@@ -2,6 +2,8 @@ package edu.rico.nbafx.controller;
 
 import edu.rico.nbafx.model.Jugador;
 import edu.rico.nbafx.model.Posicion;
+import edu.rico.nbafx.model.Rol;
+import edu.rico.nbafx.model.Usuario;
 import edu.rico.nbafx.service.JugadorService;
 import edu.rico.nbafx.util.AppShell;
 import edu.rico.nbafx.util.View;
@@ -26,12 +28,30 @@ import java.util.Optional;
 public class JugadoresController {
 
     @FXML private TilePane jugadoresContainer;
+    @FXML private Button btnUsuarios;
 
     private final JugadorService jugadorService = new JugadorService();
 
     @FXML
     public void initialize() {
+        configurarPermisos();
         cargarJugadores();
+    }
+
+    /**
+     * Configura la visibilidad de los elementos según el rol del usuario actual.
+     */
+    private void configurarPermisos() {
+        Usuario currentUser = AppShell.getInstance().getCurrentUser();
+        
+        if (currentUser != null && currentUser.getRol() == Rol.USER) {
+            // Si es usuario normal, ocultamos el botón de gestión de usuarios
+            btnUsuarios.setVisible(false);
+            btnUsuarios.setManaged(false); // Para que no ocupe espacio
+        } else {
+            btnUsuarios.setVisible(true);
+            btnUsuarios.setManaged(true);
+        }
     }
 
     /**
@@ -74,6 +94,17 @@ public class JugadoresController {
     @FXML
     private void handleAgregarJugador() {
         mostrarDialogoJugador(null);
+    }
+
+    @FXML
+    private void handleIrAUsuarios() {
+        AppShell.getInstance().loadView(View.USUARIOS);
+    }
+
+    @FXML
+    private void handleLogout() {
+        AppShell.getInstance().setCurrentUser(null);
+        AppShell.getInstance().loadView(View.LOGIN);
     }
 
     // Estos métodos ahora son llamados desde el JugadorCardController a través de callbacks
@@ -215,11 +246,6 @@ public class JugadoresController {
 
             new Thread(task).start();
         });
-    }
-
-    @FXML
-    private void handleVolver() {
-        AppShell.getInstance().loadView(View.USUARIOS);
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {

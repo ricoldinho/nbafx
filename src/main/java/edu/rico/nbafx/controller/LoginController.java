@@ -54,10 +54,19 @@ public class LoginController {
             Optional<Usuario> usuarioOpt = loginTask.getValue();
             
             if (usuarioOpt.isPresent()) {
+                Usuario usuario = usuarioOpt.get();
                 errorLabel.setText("Login correcto");
+                
                 // Guardar usuario en sesión
-                AppShell.getInstance().setCurrentUser(usuarioOpt.get());
-                abrirVistaPrincipal(usuarioOpt.get());
+                AppShell.getInstance().setCurrentUser(usuario);
+                
+                // Redirección basada en Rol
+                if (usuario.getRol() == Rol.ADMIN) {
+                    abrirVista(View.USUARIOS, usuario);
+                } else {
+                    abrirVista(View.JUGADORES, usuario);
+                }
+                
             } else {
                 errorLabel.setText("Usuario o contraseña incorrectos");
             }
@@ -75,34 +84,37 @@ public class LoginController {
 
     /**
      * Maneja el evento de registro de un nuevo usuario.
-     * Utiliza diálogos para capturar la información y una Task para guardar en BD.
+     * Por defecto, todos los nuevos registros tienen el rol USER.
      */
     @FXML
     private void handleRegister() {
-        // Diálogo simple para registro rápido
+        // Diálogo para el nombre
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Registro");
-        dialog.setHeaderText("Ingrese nuevo usuario");
-        dialog.setContentText("Nombre:");
+        dialog.setHeaderText("Crear nueva cuenta");
+        dialog.setContentText("Nombre de usuario:");
         
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(name -> {
+            if (name.trim().isEmpty()) {
+                showAlert(Alert.AlertType.WARNING, "Aviso", "El nombre no puede estar vacío");
+                return;
+            }
+
+            // Diálogo para la contraseña
             TextInputDialog passDialog = new TextInputDialog();
             passDialog.setTitle("Registro");
-            passDialog.setHeaderText("Ingrese contraseña");
-            passDialog.setContentText("Password:");
+            passDialog.setHeaderText("Establecer contraseña");
+            passDialog.setContentText("Contraseña:");
             
             Optional<String> passResult = passDialog.showAndWait();
             passResult.ifPresent(pass -> {
-                ChoiceDialog<Rol> rolDialog = new ChoiceDialog<>(Rol.USER, Rol.values());
-                rolDialog.setTitle("Registro");
-                rolDialog.setHeaderText("Seleccione Rol");
-                rolDialog.setContentText("Rol:");
-                
-                Optional<Rol> rolResult = rolDialog.showAndWait();
-                rolResult.ifPresent(rol -> {
-                    registrarUsuarioAsync(name, pass, rol);
-                });
+                if (pass.trim().isEmpty()) {
+                    showAlert(Alert.AlertType.WARNING, "Aviso", "La contraseña no puede estar vacía");
+                    return;
+                }
+                // Registramos directamente con Rol.USER
+                registrarUsuarioAsync(name, pass, Rol.USER);
             });
         });
     }
@@ -120,7 +132,7 @@ public class LoginController {
         };
 
         registerTask.setOnSucceeded(e -> 
-            showAlert(Alert.AlertType.INFORMATION, "Éxito", "Usuario registrado correctamente")
+            showAlert(Alert.AlertType.INFORMATION, "Éxito", "Usuario registrado correctamente. Ya puede iniciar sesión.")
         );
 
         registerTask.setOnFailed(e -> 
@@ -131,19 +143,15 @@ public class LoginController {
     }
 
     /**
-     * Carga y muestra la vista principal de la aplicación usando AppShell.
-     * @param usuario El usuario autenticado.
+     * Carga y muestra la vista correspondiente usando AppShell.
      */
-    private void abrirVistaPrincipal(Usuario usuario) {
-        // Usamos el AppShell para cargar la vista de usuarios
-        Object controller = AppShell.getInstance().loadView(View.USUARIOS);
+    private void abrirVista(View view, Usuario usuario) {
+        Object controller = AppShell.getInstance().loadView(view);
         
-        // Si la carga fue exitosa, configuramos el controlador
+        // Configuramos el controlador si es necesario
         if (controller instanceof UsuariosController) {
             ((UsuariosController) controller).setUsuario(usuario);
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Error", "No se pudo cargar la vista principal.");
-        }
+        } 
     }
 
     private void setInputsDisabled(boolean disabled) {
