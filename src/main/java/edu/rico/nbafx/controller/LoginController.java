@@ -3,14 +3,12 @@ package edu.rico.nbafx.controller;
 import edu.rico.nbafx.model.Rol;
 import edu.rico.nbafx.model.Usuario;
 import edu.rico.nbafx.service.UsuarioService;
+import edu.rico.nbafx.util.AppShell;
+import edu.rico.nbafx.util.View;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -131,24 +129,18 @@ public class LoginController {
     }
 
     /**
-     * Carga y muestra la vista principal de la aplicación.
+     * Carga y muestra la vista principal de la aplicación usando AppShell.
      * @param usuario El usuario autenticado.
      */
     private void abrirVistaPrincipal(Usuario usuario) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/usuarios-view.fxml"));
-            Scene scene = new Scene(loader.load(), 800, 600);
-            
-            UsuariosController controller = loader.getController();
-            controller.setUsuario(usuario);
-            
-            Stage stage = (Stage) usernameField.getScene().getWindow();
-            stage.setScene(scene);
-            stage.setTitle("Gestión de Usuarios - NBA FX");
-            stage.centerOnScreen();
-        } catch (IOException e) {
-            e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Error", "No se pudo cargar la vista principal: " + e.getMessage());
+        // Usamos el AppShell para cargar la vista de usuarios
+        Object controller = AppShell.getInstance().loadView(View.USUARIOS);
+        
+        // Si la carga fue exitosa, configuramos el controlador
+        if (controller instanceof UsuariosController) {
+            ((UsuariosController) controller).setUsuario(usuario);
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Error", "No se pudo cargar la vista principal.");
         }
     }
 

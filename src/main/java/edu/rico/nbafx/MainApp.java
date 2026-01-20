@@ -1,8 +1,8 @@
 package edu.rico.nbafx;
 
+import edu.rico.nbafx.util.AppShell;
+import edu.rico.nbafx.util.View;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -10,11 +10,11 @@ import java.io.IOException;
 public class MainApp extends Application {
     @Override
     public void start(Stage stage) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(MainApp.class.getResource("/fxml/login_view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 400, 300);
-        stage.setTitle("Login System");
-        stage.setScene(scene);
-        stage.show();
+        // Inicializamos el AppShell con el Stage principal
+        AppShell.getInstance().init(stage);
+        
+        // Cargamos la vista inicial (Login)
+        AppShell.getInstance().loadView(View.LOGIN);
     }
 
     public static void main(String[] args) {

@@ -1,9 +1,10 @@
 package edu.rico.nbafx.controller;
 
-import edu.rico.nbafx.MainApp;
 import edu.rico.nbafx.model.Rol;
 import edu.rico.nbafx.model.Usuario;
 import edu.rico.nbafx.service.UsuarioService;
+import edu.rico.nbafx.util.AppShell;
+import edu.rico.nbafx.util.View;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -11,13 +12,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -262,19 +259,11 @@ public class UsuariosController {
     }
 
     /**
-     * Cierra la sesión actual y vuelve a la pantalla de login.
+     * Cierra la sesión actual y vuelve a la pantalla de login usando AppShell.
      */
     @FXML
     private void handleLogout() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login_view.fxml"));
-            Scene scene = new Scene(loader.load());
-            Stage stage = (Stage) welcomeLabel.getScene().getWindow();
-            stage.setScene(scene);
-            stage.setTitle("Login System");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        AppShell.getInstance().loadView(View.LOGIN);
     }
 
     /**
