@@ -10,13 +10,18 @@ import edu.rico.nbafx.util.View;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -45,9 +50,8 @@ public class JugadoresController {
         Usuario currentUser = AppShell.getInstance().getCurrentUser();
         
         if (currentUser != null && currentUser.getRol() == Rol.USER) {
-            // Si es usuario normal, ocultamos el botón de gestión de usuarios
             btnUsuarios.setVisible(false);
-            btnUsuarios.setManaged(false); // Para que no ocupe espacio
+            btnUsuarios.setManaged(false);
         } else {
             btnUsuarios.setVisible(true);
             btnUsuarios.setManaged(true);
@@ -74,7 +78,6 @@ public class JugadoresController {
                     Parent cardNode = loader.load();
                     
                     JugadorCardController cardController = loader.getController();
-                    // Pasamos el jugador y las acciones (callbacks) al controlador de la tarjeta
                     cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador);
                     
                     jugadoresContainer.getChildren().add(cardNode);
@@ -107,7 +110,6 @@ public class JugadoresController {
         AppShell.getInstance().loadView(View.LOGIN);
     }
 
-    // Estos métodos ahora son llamados desde el JugadorCardController a través de callbacks
     private void handleEditarJugador(Jugador jugador) {
         mostrarDialogoJugador(jugador);
     }
@@ -156,7 +158,25 @@ public class JugadoresController {
         TextField anillosField = new TextField();
         TextField alturaField = new TextField();
         TextField pesoField = new TextField();
+        
         TextField imageUrlField = new TextField();
+        imageUrlField.setPromptText("URL de Imagen o ruta local");
+        Button btnExaminar = new Button("Examinar...");
+        btnExaminar.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Seleccionar Imagen del Jugador");
+            fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg", "*.gif")
+            );
+            File selectedFile = fileChooser.showOpenDialog(AppShell.getInstance().getPrimaryStage());
+            if (selectedFile != null) {
+                imageUrlField.setText(selectedFile.toURI().toString());
+            }
+        });
+        
+        HBox imageBox = new HBox(10);
+        HBox.setHgrow(imageUrlField, Priority.ALWAYS);
+        imageBox.getChildren().addAll(imageUrlField, btnExaminar);
 
         nombreField.setPromptText("Nombre");
         dorsalField.setPromptText("Dorsal");
@@ -164,7 +184,6 @@ public class JugadoresController {
         anillosField.setPromptText("Anillos");
         alturaField.setPromptText("Altura (m)");
         pesoField.setPromptText("Peso (kg)");
-        imageUrlField.setPromptText("URL de Imagen");
 
         if (jugadorExistente != null) {
             nombreField.setText(jugadorExistente.getNombre());
@@ -185,7 +204,7 @@ public class JugadoresController {
             new Label("Anillos:"), anillosField,
             new Label("Altura (m):"), alturaField,
             new Label("Peso (kg):"), pesoField,
-            new Label("URL Imagen:"), imageUrlField
+            new Label("Imagen:"), imageBox
         );
         
         ScrollPane scrollPane = new ScrollPane(content);
@@ -193,32 +212,52 @@ public class JugadoresController {
         scrollPane.setPrefHeight(400);
         dialog.getDialogPane().setContent(scrollPane);
 
+        // VALIDACIÓN: Evitar que el diálogo se cierre si hay errores
+        final Button btnGuardar = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        btnGuardar.addEventFilter(ActionEvent.ACTION, event -> {
+            try {
+                // Validaciones básicas
+                if (nombreField.getText().trim().isEmpty()) throw new IllegalArgumentException("El nombre es obligatorio");
+                if (equipoField.getText().trim().isEmpty()) throw new IllegalArgumentException("El equipo es obligatorio");
+                if (posicionBox.getValue() == null) throw new IllegalArgumentException("Seleccione una posición");
+                
+                // Validaciones numéricas
+                Integer.parseInt(dorsalField.getText().trim());
+                Integer.parseInt(anillosField.getText().trim());
+                Double.parseDouble(alturaField.getText().replace(",", ".").trim());
+                Double.parseDouble(pesoField.getText().replace(",", ".").trim());
+                
+            } catch (NumberFormatException e) {
+                showAlert(Alert.AlertType.ERROR, "Error de formato", "Por favor revise los campos numéricos (use punto o coma para decimales).");
+                event.consume(); // Evita que el diálogo se cierre
+            } catch (IllegalArgumentException e) {
+                showAlert(Alert.AlertType.ERROR, "Datos incompletos", e.getMessage());
+                event.consume(); // Evita que el diálogo se cierre
+            }
+        });
+
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
-                try {
-                    String nombre = nombreField.getText();
-                    int dorsal = Integer.parseInt(dorsalField.getText());
-                    String equipo = equipoField.getText();
-                    Posicion posicion = posicionBox.getValue();
-                    int anillos = Integer.parseInt(anillosField.getText());
-                    double altura = Double.parseDouble(alturaField.getText());
-                    double peso = Double.parseDouble(pesoField.getText());
-                    String imageUrl = imageUrlField.getText();
+                // Aquí ya sabemos que los datos son válidos gracias al filtro anterior
+                String nombre = nombreField.getText();
+                int dorsal = Integer.parseInt(dorsalField.getText().trim());
+                String equipo = equipoField.getText();
+                Posicion posicion = posicionBox.getValue();
+                int anillos = Integer.parseInt(anillosField.getText().trim());
+                double altura = Double.parseDouble(alturaField.getText().replace(",", ".").trim());
+                double peso = Double.parseDouble(pesoField.getText().replace(",", ".").trim());
+                String imageUrl = imageUrlField.getText();
 
-                    Jugador j = jugadorExistente != null ? jugadorExistente : new Jugador();
-                    j.setNombre(nombre);
-                    j.setDorsal(dorsal);
-                    j.setEquipo(equipo);
-                    j.setPosicion(posicion);
-                    j.setNumeroAnillos(anillos);
-                    j.setAltura(altura);
-                    j.setPeso(peso);
-                    j.setImageUrl(imageUrl);
-                    return j;
-                } catch (NumberFormatException e) {
-                    showAlert(Alert.AlertType.ERROR, "Error de formato", "Por favor ingrese números válidos.");
-                    return null;
-                }
+                Jugador j = jugadorExistente != null ? jugadorExistente : new Jugador();
+                j.setNombre(nombre);
+                j.setDorsal(dorsal);
+                j.setEquipo(equipo);
+                j.setPosicion(posicion);
+                j.setNumeroAnillos(anillos);
+                j.setAltura(altura);
+                j.setPeso(peso);
+                j.setImageUrl(imageUrl);
+                return j;
             }
             return null;
         });

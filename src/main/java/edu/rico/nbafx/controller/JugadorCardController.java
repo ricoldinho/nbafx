@@ -25,7 +25,6 @@ public class JugadorCardController {
     private Consumer<Jugador> onEditarListener;
     private Consumer<Jugador> onEliminarListener;
     
-    // Usamos una imagen local como fallback si es posible, o una URL segura
     private static final String DEFAULT_IMAGE_URL = "https://via.placeholder.com/150";
 
     /**
@@ -50,21 +49,18 @@ public class JugadorCardController {
     }
 
     private void cargarImagen(String url) {
-        // Validar URL básica
         String imageUrl = (url != null && !url.trim().isEmpty()) ? url : DEFAULT_IMAGE_URL;
         
-        // Cargar imagen en background para no bloquear UI
-        // El constructor de Image con backgroundLoading=true ya hace esto,
-        // pero añadimos manejo de errores en el listener de error de la imagen.
-        Image image = new Image(imageUrl, true);
+        // OPTIMIZACIÓN CRÍTICA:
+        // Pasamos el ancho (150) y alto (150) al constructor de Image.
+        // true, true -> preserveRatio, smooth
+        // true -> backgroundLoading (Carga en hilo secundario para no congelar la UI)
+        Image image = new Image(imageUrl, 150, 150, true, true, true);
         
         image.exceptionProperty().addListener((obs, oldEx, newEx) -> {
             if (newEx != null) {
-                // Si falla la carga (ej. 403 Forbidden, 404 Not Found), ponemos el placeholder
-                // Es importante hacerlo en el hilo de JavaFX si vamos a tocar la UI, 
-                // aunque el listener de properties suele ser seguro, Platform.runLater asegura consistencia.
+                // Si falla, cargamos el placeholder
                 Platform.runLater(() -> imagenJugador.setImage(new Image(DEFAULT_IMAGE_URL)));
-                System.err.println("Error cargando imagen para " + jugador.getNombre() + ": " + newEx.getMessage());
             }
         });
 
