@@ -5,6 +5,7 @@ import edu.rico.nbafx.model.Posicion;
 import edu.rico.nbafx.model.Rol;
 import edu.rico.nbafx.model.Usuario;
 import edu.rico.nbafx.service.JugadorService;
+import edu.rico.nbafx.service.QuintetoService;
 import edu.rico.nbafx.util.AppShell;
 import edu.rico.nbafx.util.View;
 import javafx.application.Platform;
@@ -25,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,35 +38,62 @@ public class JugadoresController {
 
     @FXML private TilePane jugadoresContainer;
     @FXML private Button btnUsuarios;
-    @FXML private Button btnNuevoJugador; // Nuevo ID inyectado
+    @FXML private Button btnNuevoJugador;
+    @FXML private Label lblContadorQuinteto;
 
     private final JugadorService jugadorService = new JugadorService();
+    private final QuintetoService quintetoService = new QuintetoService();
     private File imagenSeleccionadaTemp = null;
+    
+    // Cache de IDs de jugadores en el quinteto del usuario actual
+    private List<Integer> quintetoIds = new ArrayList<>();
 
     @FXML
     public void initialize() {
         configurarPermisos();
-        cargarJugadores();
+        cargarDatosIniciales();
     }
 
     private void configurarPermisos() {
         Usuario currentUser = AppShell.getInstance().getCurrentUser();
         
         if (currentUser != null && currentUser.getRol() == Rol.USER) {
-            // Ocultar botón de gestión de usuarios
             btnUsuarios.setVisible(false);
             btnUsuarios.setManaged(false);
-            
-            // Ocultar botón de crear nuevo jugador
             btnNuevoJugador.setVisible(false);
             btnNuevoJugador.setManaged(false);
+            lblContadorQuinteto.setVisible(true);
         } else {
             btnUsuarios.setVisible(true);
             btnUsuarios.setManaged(true);
-            
             btnNuevoJugador.setVisible(true);
             btnNuevoJugador.setManaged(true);
+            lblContadorQuinteto.setVisible(false); // Admin no tiene quinteto
         }
+    }
+
+    private void cargarDatosIniciales() {
+        Usuario currentUser = AppShell.getInstance().getCurrentUser();
+        
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                // Si es usuario, cargamos su quinteto primero
+                if (currentUser != null && currentUser.getRol() == Rol.USER) {
+                    quintetoIds = quintetoService.obtenerIdsQuinteto(currentUser.getId());
+                }
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            actualizarContadorQuinteto();
+            cargarJugadores(); // Cargamos las tarjetas después de tener los datos del quinteto
+        });
+        
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Error", "Error al cargar datos iniciales"));
+        
+        new Thread(task).start();
     }
 
     private void cargarJugadores() {
@@ -78,17 +107,20 @@ public class JugadoresController {
         task.setOnSucceeded(e -> {
             jugadoresContainer.getChildren().clear();
             List<Jugador> jugadores = task.getValue();
+            Usuario currentUser = AppShell.getInstance().getCurrentUser();
+            
             for (Jugador jugador : jugadores) {
                 try {
                     FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/jugador-card.fxml"));
                     Parent cardNode = loader.load();
                     JugadorCardController cardController = loader.getController();
                     
-                    // Pasamos el jugador y las acciones
-                    cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador);
+                    // Pasamos el callback de favorito
+                    cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador, this::handleFavoritoChange);
                     
-                    // IMPORTANTE: Configurar permisos de la tarjeta individualmente
-                    cardController.configurarPermisos(AppShell.getInstance().getCurrentUser());
+                    // Configuramos estado inicial (si está en el quinteto)
+                    boolean esFavorito = quintetoIds.contains(jugador.getId());
+                    cardController.configurarPermisos(currentUser, esFavorito);
                     
                     jugadoresContainer.getChildren().add(cardNode);
                 } catch (IOException ex) {
@@ -99,6 +131,45 @@ public class JugadoresController {
 
         task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Error", "No se pudieron cargar los jugadores: " + task.getException().getMessage()));
         new Thread(task).start();
+    }
+
+    private void handleFavoritoChange(Jugador jugador, Boolean isSelected) {
+        Usuario currentUser = AppShell.getInstance().getCurrentUser();
+        if (currentUser == null) return;
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                if (isSelected) {
+                    quintetoService.agregarJugador(currentUser.getId(), jugador.getId());
+                } else {
+                    quintetoService.eliminarJugador(currentUser.getId(), jugador.getId());
+                }
+                // Actualizamos la lista local para mantener consistencia
+                quintetoIds = quintetoService.obtenerIdsQuinteto(currentUser.getId());
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            actualizarContadorQuinteto();
+            // Opcional: Mostrar feedback sutil
+        });
+
+        task.setOnFailed(e -> {
+            // Revertir visualmente si falló (ej. por límite de 5)
+            showAlert(Alert.AlertType.WARNING, "Aviso", e.getSource().getException().getMessage());
+            // Recargamos todo para asegurar consistencia visual
+            cargarJugadores(); 
+        });
+
+        new Thread(task).start();
+    }
+
+    private void actualizarContadorQuinteto() {
+        if (lblContadorQuinteto.isVisible()) {
+            lblContadorQuinteto.setText("Quinteto: " + quintetoIds.size() + "/5");
+        }
     }
 
     @FXML private void handleAgregarJugador() { mostrarDialogoJugador(null); }

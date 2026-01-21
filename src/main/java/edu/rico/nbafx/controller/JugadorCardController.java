@@ -6,6 +6,7 @@ import edu.rico.nbafx.model.Usuario;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -13,6 +14,7 @@ import javafx.scene.layout.HBox;
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -26,19 +28,30 @@ public class JugadorCardController {
     @FXML private Label lblPosicion;
     @FXML private Label lblFisico;
     @FXML private Label lblAnillos;
-    @FXML private HBox accionesContainer; // Contenedor de botones
+    @FXML private HBox accionesContainer; // Contenedor de botones de Admin
+    @FXML private ToggleButton btnFavorito; // Botón de favorito
 
     private Jugador jugador;
     private Consumer<Jugador> onEditarListener;
     private Consumer<Jugador> onEliminarListener;
-    
+    private BiConsumer<Jugador, Boolean> onFavoritoChangeListener; // Callback para notificar al padre
+
     private static final String DEFAULT_IMAGE_RESOURCE = "/imagenes/default.png";
     private static final String FALLBACK_ONLINE = "https://via.placeholder.com/150";
 
-    public void setJugador(Jugador jugador, Consumer<Jugador> onEditar, Consumer<Jugador> onEliminar) {
+    /**
+     * Configura los datos de la tarjeta.
+     *
+     * @param jugador El objeto Jugador a mostrar.
+     * @param onEditar Callback para la acción de editar.
+     * @param onEliminar Callback para la acción de eliminar.
+     * @param onFavoritoChange Callback para notificar cambios en el estado de favorito.
+     */
+    public void setJugador(Jugador jugador, Consumer<Jugador> onEditar, Consumer<Jugador> onEliminar, BiConsumer<Jugador, Boolean> onFavoritoChange) {
         this.jugador = jugador;
         this.onEditarListener = onEditar;
         this.onEliminarListener = onEliminar;
+        this.onFavoritoChangeListener = onFavoritoChange;
 
         lblNombre.setText(jugador.getNombre());
         lblEquipo.setText(jugador.getEquipo() + " - #" + jugador.getDorsal());
@@ -52,14 +65,23 @@ public class JugadorCardController {
     /**
      * Configura la visibilidad de los botones de acción según el rol del usuario.
      * @param currentUser El usuario actual de la sesión.
+     * @param esFavorito Indica si el jugador ya está en el quinteto del usuario.
      */
-    public void configurarPermisos(Usuario currentUser) {
+    public void configurarPermisos(Usuario currentUser, boolean esFavorito) {
         if (currentUser != null && currentUser.getRol() == Rol.USER) {
             accionesContainer.setVisible(false);
             accionesContainer.setManaged(false);
-        } else {
+            
+            btnFavorito.setVisible(true);
+            btnFavorito.setManaged(true);
+            btnFavorito.setSelected(esFavorito);
+            btnFavorito.setText(esFavorito ? "En mi Quinteto" : "Añadir a Quinteto");
+        } else { // ADMIN
             accionesContainer.setVisible(true);
             accionesContainer.setManaged(true);
+            
+            btnFavorito.setVisible(false);
+            btnFavorito.setManaged(false);
         }
     }
 
@@ -129,5 +151,13 @@ public class JugadorCardController {
     @FXML
     private void handleEliminar() {
         if (onEliminarListener != null) onEliminarListener.accept(jugador);
+    }
+
+    @FXML
+    private void handleFavorito() {
+        if (onFavoritoChangeListener != null) {
+            onFavoritoChangeListener.accept(jugador, btnFavorito.isSelected());
+            btnFavorito.setText(btnFavorito.isSelected() ? "En mi Quinteto" : "Añadir a Quinteto");
+        }
     }
 }
