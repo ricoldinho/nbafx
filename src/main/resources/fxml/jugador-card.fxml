@@ -31,10 +31,10 @@
          </children>
       </VBox>
       
-      <HBox alignment="CENTER" spacing="10.0">
+      <HBox fx:id="accionesContainer" alignment="CENTER" spacing="10.0">
          <children>
-            <Button mnemonicParsing="false" onAction="#handleEditar" styleClass="button-warning" text="Editar" />
-            <Button mnemonicParsing="false" onAction="#handleEliminar" styleClass="button-danger" text="Eliminar" />
+            <Button fx:id="btnEditar" mnemonicParsing="false" onAction="#handleEditar" styleClass="button-warning" text="Editar" />
+            <Button fx:id="btnEliminar" mnemonicParsing="false" onAction="#handleEliminar" styleClass="button-danger" text="Eliminar" />
          </children>
       </HBox>
    </children>

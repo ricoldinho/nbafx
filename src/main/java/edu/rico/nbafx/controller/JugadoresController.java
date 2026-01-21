@@ -36,10 +36,9 @@ public class JugadoresController {
 
     @FXML private TilePane jugadoresContainer;
     @FXML private Button btnUsuarios;
+    @FXML private Button btnNuevoJugador; // Nuevo ID inyectado
 
     private final JugadorService jugadorService = new JugadorService();
-    
-    // Variable temporal para guardar el archivo seleccionado antes de copiarlo
     private File imagenSeleccionadaTemp = null;
 
     @FXML
@@ -50,12 +49,21 @@ public class JugadoresController {
 
     private void configurarPermisos() {
         Usuario currentUser = AppShell.getInstance().getCurrentUser();
+        
         if (currentUser != null && currentUser.getRol() == Rol.USER) {
+            // Ocultar botón de gestión de usuarios
             btnUsuarios.setVisible(false);
             btnUsuarios.setManaged(false);
+            
+            // Ocultar botón de crear nuevo jugador
+            btnNuevoJugador.setVisible(false);
+            btnNuevoJugador.setManaged(false);
         } else {
             btnUsuarios.setVisible(true);
             btnUsuarios.setManaged(true);
+            
+            btnNuevoJugador.setVisible(true);
+            btnNuevoJugador.setManaged(true);
         }
     }
 
@@ -75,7 +83,13 @@ public class JugadoresController {
                     FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/jugador-card.fxml"));
                     Parent cardNode = loader.load();
                     JugadorCardController cardController = loader.getController();
+                    
+                    // Pasamos el jugador y las acciones
                     cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador);
+                    
+                    // IMPORTANTE: Configurar permisos de la tarjeta individualmente
+                    cardController.configurarPermisos(AppShell.getInstance().getCurrentUser());
+                    
                     jugadoresContainer.getChildren().add(cardNode);
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -148,10 +162,7 @@ public class JugadoresController {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Seleccionar Imagen");
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg"));
-            
-            // CORRECCIÓN: Usamos la ventana del diálogo como propietario, no la ventana principal
             File selectedFile = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
-            
             if (selectedFile != null) {
                 imagenSeleccionadaTemp = selectedFile;
                 imageUrlField.setText(selectedFile.getAbsolutePath());

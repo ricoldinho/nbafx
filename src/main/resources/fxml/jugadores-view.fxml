@@ -17,7 +17,7 @@
             <ToolBar prefHeight="40.0" prefWidth="200.0">
               <items>
                   <Button fx:id="btnUsuarios" mnemonicParsing="false" onAction="#handleIrAUsuarios" text="Usuarios" />
-                  <Button mnemonicParsing="false" onAction="#handleAgregarJugador" text="Nuevo Jugador" />
+                  <Button fx:id="btnNuevoJugador" mnemonicParsing="false" onAction="#handleAgregarJugador" text="Nuevo Jugador" />
                   <Button mnemonicParsing="false" onAction="#handleLogout" text="Cerrar Sesión" />
               </items>
             </ToolBar>

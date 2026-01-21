@@ -1,11 +1,14 @@
 package edu.rico.nbafx.controller;
 
 import edu.rico.nbafx.model.Jugador;
+import edu.rico.nbafx.model.Rol;
+import edu.rico.nbafx.model.Usuario;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 
 import java.io.File;
 import java.net.URL;
@@ -23,14 +26,13 @@ public class JugadorCardController {
     @FXML private Label lblPosicion;
     @FXML private Label lblFisico;
     @FXML private Label lblAnillos;
+    @FXML private HBox accionesContainer; // Contenedor de botones
 
     private Jugador jugador;
     private Consumer<Jugador> onEditarListener;
     private Consumer<Jugador> onEliminarListener;
     
-    // Ruta al recurso en el classpath (src/main/resources/imagenes/default.png)
     private static final String DEFAULT_IMAGE_RESOURCE = "/imagenes/default.png";
-    // Fallback online por si no existe el archivo local
     private static final String FALLBACK_ONLINE = "https://via.placeholder.com/150";
 
     public void setJugador(Jugador jugador, Consumer<Jugador> onEditar, Consumer<Jugador> onEliminar) {
@@ -47,10 +49,23 @@ public class JugadorCardController {
         cargarImagen(jugador.getImageUrl());
     }
 
+    /**
+     * Configura la visibilidad de los botones de acción según el rol del usuario.
+     * @param currentUser El usuario actual de la sesión.
+     */
+    public void configurarPermisos(Usuario currentUser) {
+        if (currentUser != null && currentUser.getRol() == Rol.USER) {
+            accionesContainer.setVisible(false);
+            accionesContainer.setManaged(false);
+        } else {
+            accionesContainer.setVisible(true);
+            accionesContainer.setManaged(true);
+        }
+    }
+
     private void cargarImagen(String url) {
         String urlParaCargar = null;
 
-        // 1. Intentar usar la URL del jugador si existe
         if (url != null && !url.trim().isEmpty()) {
             String urlTrimmed = url.trim();
             
@@ -59,11 +74,9 @@ public class JugadorCardController {
             } else if (urlTrimmed.startsWith("file:")) {
                 urlParaCargar = urlTrimmed;
             } else {
-                // Ruta local (relativa o absoluta)
                 try {
                     File file = new File(urlTrimmed);
                     if (!file.isAbsolute()) {
-                        // Resolver ruta relativa (ej: "imagenes/foto.jpg") respecto al directorio del proyecto
                         file = Paths.get(System.getProperty("user.dir"), urlTrimmed).toFile();
                     }
 
@@ -78,27 +91,22 @@ public class JugadorCardController {
             }
         }
 
-        // 2. Si no hay URL válida, usar la imagen por defecto del classpath
         if (urlParaCargar == null) {
             URL resource = getClass().getResource(DEFAULT_IMAGE_RESOURCE);
             if (resource != null) {
                 urlParaCargar = resource.toExternalForm();
             } else {
-                // Si no existe default.png, usar placeholder online
-                System.err.println("No se encontró " + DEFAULT_IMAGE_RESOURCE + " en resources.");
                 urlParaCargar = FALLBACK_ONLINE;
             }
         }
 
         final String finalUrl = urlParaCargar;
 
-        // Carga asíncrona
         Image image = new Image(finalUrl, 150, 150, true, true, true);
         
         image.errorProperty().addListener((obs, oldErr, newErr) -> {
             if (newErr) {
                 System.err.println("Error cargando imagen: " + finalUrl);
-                // Si falla la carga, intentar cargar el default del classpath
                 Platform.runLater(() -> {
                     URL res = getClass().getResource(DEFAULT_IMAGE_RESOURCE);
                     if (res != null) {
