@@ -7,6 +7,9 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 /**
@@ -25,15 +28,11 @@ public class JugadorCardController {
     private Consumer<Jugador> onEditarListener;
     private Consumer<Jugador> onEliminarListener;
     
-    private static final String DEFAULT_IMAGE_URL = "https://via.placeholder.com/150";
+    // Ruta al recurso en el classpath (src/main/resources/imagenes/default.png)
+    private static final String DEFAULT_IMAGE_RESOURCE = "/imagenes/default.png";
+    // Fallback online por si no existe el archivo local
+    private static final String FALLBACK_ONLINE = "https://via.placeholder.com/150";
 
-    /**
-     * Configura los datos de la tarjeta.
-     *
-     * @param jugador El objeto Jugador a mostrar.
-     * @param onEditar Callback para la acción de editar.
-     * @param onEliminar Callback para la acción de eliminar.
-     */
     public void setJugador(Jugador jugador, Consumer<Jugador> onEditar, Consumer<Jugador> onEliminar) {
         this.jugador = jugador;
         this.onEditarListener = onEditar;
@@ -49,18 +48,65 @@ public class JugadorCardController {
     }
 
     private void cargarImagen(String url) {
-        String imageUrl = (url != null && !url.trim().isEmpty()) ? url : DEFAULT_IMAGE_URL;
+        String urlParaCargar = null;
+
+        // 1. Intentar usar la URL del jugador si existe
+        if (url != null && !url.trim().isEmpty()) {
+            String urlTrimmed = url.trim();
+            
+            if (urlTrimmed.startsWith("http")) {
+                urlParaCargar = urlTrimmed;
+            } else if (urlTrimmed.startsWith("file:")) {
+                urlParaCargar = urlTrimmed;
+            } else {
+                // Ruta local (relativa o absoluta)
+                try {
+                    File file = new File(urlTrimmed);
+                    if (!file.isAbsolute()) {
+                        // Resolver ruta relativa (ej: "imagenes/foto.jpg") respecto al directorio del proyecto
+                        file = Paths.get(System.getProperty("user.dir"), urlTrimmed).toFile();
+                    }
+
+                    if (file.exists()) {
+                        urlParaCargar = file.toURI().toString();
+                    } else {
+                        System.err.println("Imagen local no encontrada: " + file.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // 2. Si no hay URL válida, usar la imagen por defecto del classpath
+        if (urlParaCargar == null) {
+            URL resource = getClass().getResource(DEFAULT_IMAGE_RESOURCE);
+            if (resource != null) {
+                urlParaCargar = resource.toExternalForm();
+            } else {
+                // Si no existe default.png, usar placeholder online
+                System.err.println("No se encontró " + DEFAULT_IMAGE_RESOURCE + " en resources.");
+                urlParaCargar = FALLBACK_ONLINE;
+            }
+        }
+
+        final String finalUrl = urlParaCargar;
+
+        // Carga asíncrona
+        Image image = new Image(finalUrl, 150, 150, true, true, true);
         
-        // OPTIMIZACIÓN CRÍTICA:
-        // Pasamos el ancho (150) y alto (150) al constructor de Image.
-        // true, true -> preserveRatio, smooth
-        // true -> backgroundLoading (Carga en hilo secundario para no congelar la UI)
-        Image image = new Image(imageUrl, 150, 150, true, true, true);
-        
-        image.exceptionProperty().addListener((obs, oldEx, newEx) -> {
-            if (newEx != null) {
-                // Si falla, cargamos el placeholder
-                Platform.runLater(() -> imagenJugador.setImage(new Image(DEFAULT_IMAGE_URL)));
+        image.errorProperty().addListener((obs, oldErr, newErr) -> {
+            if (newErr) {
+                System.err.println("Error cargando imagen: " + finalUrl);
+                // Si falla la carga, intentar cargar el default del classpath
+                Platform.runLater(() -> {
+                    URL res = getClass().getResource(DEFAULT_IMAGE_RESOURCE);
+                    if (res != null) {
+                        imagenJugador.setImage(new Image(res.toExternalForm()));
+                    } else {
+                        imagenJugador.setImage(new Image(FALLBACK_ONLINE));
+                    }
+                });
             }
         });
 
@@ -69,15 +115,11 @@ public class JugadorCardController {
 
     @FXML
     private void handleEditar() {
-        if (onEditarListener != null) {
-            onEditarListener.accept(jugador);
-        }
+        if (onEditarListener != null) onEditarListener.accept(jugador);
     }
 
     @FXML
     private void handleEliminar() {
-        if (onEliminarListener != null) {
-            onEliminarListener.accept(jugador);
-        }
+        if (onEliminarListener != null) onEliminarListener.accept(jugador);
     }
 }

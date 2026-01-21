@@ -23,12 +23,14 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Controlador para la vista de gestión de jugadores.
- * Muestra los jugadores cargando componentes FXML dinámicos (tarjetas).
  */
 public class JugadoresController {
 
@@ -36,6 +38,9 @@ public class JugadoresController {
     @FXML private Button btnUsuarios;
 
     private final JugadorService jugadorService = new JugadorService();
+    
+    // Variable temporal para guardar el archivo seleccionado antes de copiarlo
+    private File imagenSeleccionadaTemp = null;
 
     @FXML
     public void initialize() {
@@ -43,12 +48,8 @@ public class JugadoresController {
         cargarJugadores();
     }
 
-    /**
-     * Configura la visibilidad de los elementos según el rol del usuario actual.
-     */
     private void configurarPermisos() {
         Usuario currentUser = AppShell.getInstance().getCurrentUser();
-        
         if (currentUser != null && currentUser.getRol() == Rol.USER) {
             btnUsuarios.setVisible(false);
             btnUsuarios.setManaged(false);
@@ -58,9 +59,6 @@ public class JugadoresController {
         }
     }
 
-    /**
-     * Carga los jugadores desde la base de datos de forma asíncrona.
-     */
     private void cargarJugadores() {
         Task<List<Jugador>> task = new Task<>() {
             @Override
@@ -76,10 +74,8 @@ public class JugadoresController {
                 try {
                     FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/jugador-card.fxml"));
                     Parent cardNode = loader.load();
-                    
                     JugadorCardController cardController = loader.getController();
                     cardController.setJugador(jugador, this::handleEditarJugador, this::handleEliminarJugador);
-                    
                     jugadoresContainer.getChildren().add(cardNode);
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -87,32 +83,18 @@ public class JugadoresController {
             }
         });
 
-        task.setOnFailed(e -> {
-            showAlert(Alert.AlertType.ERROR, "Error", "No se pudieron cargar los jugadores: " + task.getException().getMessage());
-        });
-
+        task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Error", "No se pudieron cargar los jugadores: " + task.getException().getMessage()));
         new Thread(task).start();
     }
 
-    @FXML
-    private void handleAgregarJugador() {
-        mostrarDialogoJugador(null);
-    }
-
-    @FXML
-    private void handleIrAUsuarios() {
-        AppShell.getInstance().loadView(View.USUARIOS);
-    }
-
-    @FXML
-    private void handleLogout() {
+    @FXML private void handleAgregarJugador() { mostrarDialogoJugador(null); }
+    @FXML private void handleIrAUsuarios() { AppShell.getInstance().loadView(View.USUARIOS); }
+    @FXML private void handleLogout() {
         AppShell.getInstance().setCurrentUser(null);
         AppShell.getInstance().loadView(View.LOGIN);
     }
 
-    private void handleEditarJugador(Jugador jugador) {
-        mostrarDialogoJugador(jugador);
-    }
+    private void handleEditarJugador(Jugador jugador) { mostrarDialogoJugador(jugador); }
 
     private void handleEliminarJugador(Jugador jugador) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -129,19 +111,18 @@ public class JugadoresController {
                     return null;
                 }
             };
-
             task.setOnSucceeded(e -> {
                 cargarJugadores();
                 showAlert(Alert.AlertType.INFORMATION, "Éxito", "Jugador eliminado.");
             });
-
             task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Error", task.getException().getMessage()));
-
             new Thread(task).start();
         }
     }
 
     private void mostrarDialogoJugador(Jugador jugadorExistente) {
+        imagenSeleccionadaTemp = null;
+
         Dialog<Jugador> dialog = new Dialog<>();
         dialog.setTitle(jugadorExistente == null ? "Nuevo Jugador" : "Editar Jugador");
         dialog.setHeaderText("Ingrese los datos del jugador");
@@ -149,7 +130,6 @@ public class JugadoresController {
         ButtonType saveButtonType = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-        // Formulario
         VBox content = new VBox(10);
         TextField nombreField = new TextField();
         TextField dorsalField = new TextField();
@@ -160,17 +140,21 @@ public class JugadoresController {
         TextField pesoField = new TextField();
         
         TextField imageUrlField = new TextField();
-        imageUrlField.setPromptText("URL de Imagen o ruta local");
-        Button btnExaminar = new Button("Examinar...");
+        imageUrlField.setPromptText("URL web o ruta local");
+        imageUrlField.setEditable(false);
+        
+        Button btnExaminar = new Button("Seleccionar Foto...");
         btnExaminar.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Seleccionar Imagen del Jugador");
-            fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg", "*.gif")
-            );
-            File selectedFile = fileChooser.showOpenDialog(AppShell.getInstance().getPrimaryStage());
+            fileChooser.setTitle("Seleccionar Imagen");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes", "*.png", "*.jpg", "*.jpeg"));
+            
+            // CORRECCIÓN: Usamos la ventana del diálogo como propietario, no la ventana principal
+            File selectedFile = fileChooser.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
+            
             if (selectedFile != null) {
-                imageUrlField.setText(selectedFile.toURI().toString());
+                imagenSeleccionadaTemp = selectedFile;
+                imageUrlField.setText(selectedFile.getAbsolutePath());
             }
         });
         
@@ -197,14 +181,10 @@ public class JugadoresController {
         }
 
         content.getChildren().addAll(
-            new Label("Nombre:"), nombreField,
-            new Label("Dorsal:"), dorsalField,
-            new Label("Equipo:"), equipoField,
-            new Label("Posición:"), posicionBox,
-            new Label("Anillos:"), anillosField,
-            new Label("Altura (m):"), alturaField,
-            new Label("Peso (kg):"), pesoField,
-            new Label("Imagen:"), imageBox
+            new Label("Nombre:"), nombreField, new Label("Dorsal:"), dorsalField,
+            new Label("Equipo:"), equipoField, new Label("Posición:"), posicionBox,
+            new Label("Anillos:"), anillosField, new Label("Altura (m):"), alturaField,
+            new Label("Peso (kg):"), pesoField, new Label("Imagen:"), imageBox
         );
         
         ScrollPane scrollPane = new ScrollPane(content);
@@ -212,51 +192,37 @@ public class JugadoresController {
         scrollPane.setPrefHeight(400);
         dialog.getDialogPane().setContent(scrollPane);
 
-        // VALIDACIÓN: Evitar que el diálogo se cierre si hay errores
         final Button btnGuardar = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
         btnGuardar.addEventFilter(ActionEvent.ACTION, event -> {
             try {
-                // Validaciones básicas
                 if (nombreField.getText().trim().isEmpty()) throw new IllegalArgumentException("El nombre es obligatorio");
                 if (equipoField.getText().trim().isEmpty()) throw new IllegalArgumentException("El equipo es obligatorio");
                 if (posicionBox.getValue() == null) throw new IllegalArgumentException("Seleccione una posición");
                 
-                // Validaciones numéricas
                 Integer.parseInt(dorsalField.getText().trim());
                 Integer.parseInt(anillosField.getText().trim());
                 Double.parseDouble(alturaField.getText().replace(",", ".").trim());
                 Double.parseDouble(pesoField.getText().replace(",", ".").trim());
-                
-            } catch (NumberFormatException e) {
-                showAlert(Alert.AlertType.ERROR, "Error de formato", "Por favor revise los campos numéricos (use punto o coma para decimales).");
-                event.consume(); // Evita que el diálogo se cierre
-            } catch (IllegalArgumentException e) {
-                showAlert(Alert.AlertType.ERROR, "Datos incompletos", e.getMessage());
-                event.consume(); // Evita que el diálogo se cierre
+            } catch (Exception e) {
+                showAlert(Alert.AlertType.ERROR, "Datos inválidos", e.getMessage());
+                event.consume();
             }
         });
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
-                // Aquí ya sabemos que los datos son válidos gracias al filtro anterior
-                String nombre = nombreField.getText();
-                int dorsal = Integer.parseInt(dorsalField.getText().trim());
-                String equipo = equipoField.getText();
-                Posicion posicion = posicionBox.getValue();
-                int anillos = Integer.parseInt(anillosField.getText().trim());
-                double altura = Double.parseDouble(alturaField.getText().replace(",", ".").trim());
-                double peso = Double.parseDouble(pesoField.getText().replace(",", ".").trim());
-                String imageUrl = imageUrlField.getText();
-
                 Jugador j = jugadorExistente != null ? jugadorExistente : new Jugador();
-                j.setNombre(nombre);
-                j.setDorsal(dorsal);
-                j.setEquipo(equipo);
-                j.setPosicion(posicion);
-                j.setNumeroAnillos(anillos);
-                j.setAltura(altura);
-                j.setPeso(peso);
-                j.setImageUrl(imageUrl);
+                j.setNombre(nombreField.getText());
+                j.setDorsal(Integer.parseInt(dorsalField.getText().trim()));
+                j.setEquipo(equipoField.getText());
+                j.setPosicion(posicionBox.getValue());
+                j.setNumeroAnillos(Integer.parseInt(anillosField.getText().trim()));
+                j.setAltura(Double.parseDouble(alturaField.getText().replace(",", ".").trim()));
+                j.setPeso(Double.parseDouble(pesoField.getText().replace(",", ".").trim()));
+                
+                if (imagenSeleccionadaTemp == null) {
+                    j.setImageUrl(imageUrlField.getText());
+                }
                 return j;
             }
             return null;
@@ -264,26 +230,49 @@ public class JugadoresController {
 
         Optional<Jugador> result = dialog.showAndWait();
         result.ifPresent(jugador -> {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() throws Exception {
-                    if (jugador.getId() == 0) {
-                        jugadorService.registrarJugador(jugador);
-                    } else {
-                        jugadorService.actualizarJugador(jugador);
+            final File archivoParaCopiar = imagenSeleccionadaTemp;
+            
+            Platform.runLater(() -> {
+                Task<Void> task = new Task<>() {
+                    @Override
+                    protected Void call() throws Exception {
+                        if (archivoParaCopiar != null) {
+                            File carpetaImagenes = new File("imagenes");
+                            if (!carpetaImagenes.exists()) {
+                                carpetaImagenes.mkdir();
+                            }
+
+                            String extension = "";
+                            String nombreOriginal = archivoParaCopiar.getName();
+                            int i = nombreOriginal.lastIndexOf('.');
+                            if (i > 0) extension = nombreOriginal.substring(i);
+                            
+                            String nombreArchivo = UUID.randomUUID().toString() + extension;
+                            File destino = new File(carpetaImagenes, nombreArchivo);
+                            
+                            Files.copy(archivoParaCopiar.toPath(), destino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                            
+                            jugador.setImageUrl("imagenes" + File.separator + nombreArchivo);
+                        }
+
+                        if (jugador.getId() == 0) jugadorService.registrarJugador(jugador);
+                        else jugadorService.actualizarJugador(jugador);
+                        return null;
                     }
-                    return null;
-                }
-            };
-
-            task.setOnSucceeded(e -> {
-                cargarJugadores();
-                showAlert(Alert.AlertType.INFORMATION, "Éxito", "Operación realizada correctamente.");
+                };
+                
+                task.setOnSucceeded(e -> {
+                    cargarJugadores();
+                    showAlert(Alert.AlertType.INFORMATION, "Éxito", "Jugador guardado correctamente.");
+                });
+                
+                task.setOnFailed(e -> {
+                    e.getSource().getException().printStackTrace();
+                    showAlert(Alert.AlertType.ERROR, "Error", "Error al guardar: " + task.getException().getMessage());
+                });
+                
+                new Thread(task).start();
             });
-
-            task.setOnFailed(e -> showAlert(Alert.AlertType.ERROR, "Error", task.getException().getMessage()));
-
-            new Thread(task).start();
         });
     }
 
